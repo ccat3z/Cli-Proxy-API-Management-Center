@@ -3,20 +3,25 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { authFilesApi } from '@/services/api/authFiles';
+import { usageApi } from '@/services/api';
 import type { GeminiKeyConfig, ProviderKeyConfig, OpenAIProviderConfig } from '@/types';
 import type { AuthFileItem } from '@/types/authFile';
 import type { CredentialInfo } from '@/types/sourceInfo';
 import { buildSourceInfoMap, resolveSourceDisplay } from '@/utils/sourceResolver';
 import { parseTimestampMs } from '@/utils/timestamp';
 import {
+  calculateCost,
   collectUsageDetails,
   extractLatencyMs,
   extractTotalTokens,
   formatDurationMs,
+  formatUsd,
   LATENCY_SOURCE_FIELD,
   normalizeAuthIndex,
+  type ModelPrice,
 } from '@/utils/usage';
 import { downloadBlob } from '@/utils/download';
 import styles from '@/pages/UsagePage.module.scss';
@@ -37,6 +42,8 @@ type RequestEventRow = {
   authIndex: string;
   failed: boolean;
   latencyMs: number | null;
+  cost: number;
+  requestId: string;
   inputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
@@ -47,6 +54,7 @@ type RequestEventRow = {
 export interface RequestEventsDetailsCardProps {
   usage: unknown;
   loading: boolean;
+  modelPrices: Record<string, ModelPrice>;
   geminiKeys: GeminiKeyConfig[];
   claudeConfigs: ProviderKeyConfig[];
   codexConfigs: ProviderKeyConfig[];
@@ -70,6 +78,7 @@ const encodeCsv = (value: string | number): string => {
 export function RequestEventsDetailsCard({
   usage,
   loading,
+  modelPrices,
   geminiKeys,
   claudeConfigs,
   codexConfigs,
@@ -163,6 +172,8 @@ export function RequestEventsDetailsCard({
           extractTotalTokens(detail)
         );
         const latencyMs = extractLatencyMs(detail);
+        const cost = calculateCost(detail, modelPrices);
+        const requestId = detail.request_id ?? '';
 
         return {
           id: `${timestamp}-${model}-${sourceKey}-${authIndex}-${index}`,
@@ -177,6 +188,8 @@ export function RequestEventsDetailsCard({
           authIndex,
           failed: detail.failed === true,
           latencyMs,
+          cost,
+          requestId,
           inputTokens,
           outputTokens,
           reasoningTokens,
@@ -219,7 +232,7 @@ export function RequestEventsDetailsCard({
         source: buildDisambiguatedSourceLabel(row),
       }))
       .sort((a, b) => b.timestampMs - a.timestampMs);
-  }, [authFileMap, i18n.language, sourceInfoMap, usage]);
+  }, [authFileMap, i18n.language, modelPrices, sourceInfoMap, usage]);
 
   const hasLatencyData = useMemo(() => rows.some((row) => row.latencyMs !== null), [rows]);
 
@@ -302,6 +315,30 @@ export function RequestEventsDetailsCard({
     effectiveSourceFilter !== ALL_FILTER ||
     effectiveAuthIndexFilter !== ALL_FILTER;
 
+  const [logModal, setLogModal] = useState<{
+    open: boolean;
+    requestId: string;
+    content: string;
+    loading: boolean;
+    error: string | null;
+  }>({ open: false, requestId: '', content: '', loading: false, error: null });
+
+  const handleViewLog = async (requestId: string) => {
+    setLogModal({ open: true, requestId, content: '', loading: true, error: null });
+    try {
+      const response = await usageApi.getRequestLog(requestId);
+      const text = typeof response === 'string' ? response : JSON.stringify(response, null, 2);
+      setLogModal((prev) => ({ ...prev, content: text, loading: false }));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLogModal((prev) => ({ ...prev, error: message, loading: false }));
+    }
+  };
+
+  const handleCloseLogModal = () => {
+    setLogModal((prev) => ({ ...prev, open: false }));
+  };
+
   const handleClearFilters = () => {
     setModelFilter(ALL_FILTER);
     setSourceFilter(ALL_FILTER);
@@ -319,6 +356,8 @@ export function RequestEventsDetailsCard({
       'auth_index',
       'result',
       ...(hasLatencyData ? ['latency_ms'] : []),
+      'cost',
+      'request_id',
       'input_tokens',
       'output_tokens',
       'reasoning_tokens',
@@ -335,6 +374,8 @@ export function RequestEventsDetailsCard({
         row.authIndex,
         row.failed ? 'failed' : 'success',
         ...(hasLatencyData ? [row.latencyMs ?? ''] : []),
+        row.cost,
+        row.requestId,
         row.inputTokens,
         row.outputTokens,
         row.reasoningTokens,
@@ -364,6 +405,8 @@ export function RequestEventsDetailsCard({
       auth_index: row.authIndex,
       failed: row.failed,
       ...(hasLatencyData && row.latencyMs !== null ? { latency_ms: row.latencyMs } : {}),
+      cost: row.cost || undefined,
+      request_id: row.requestId || undefined,
       tokens: {
         input_tokens: row.inputTokens,
         output_tokens: row.outputTokens,
@@ -492,6 +535,8 @@ export function RequestEventsDetailsCard({
                   <th>{t('usage_stats.request_events_auth_index')}</th>
                   <th>{t('usage_stats.request_events_result')}</th>
                   {hasLatencyData && <th title={latencyHint}>{t('usage_stats.time')}</th>}
+                  <th>{t('usage_stats.cost')}</th>
+                  <th>{t('usage_stats.request_events_request_id')}</th>
                   <th>{t('usage_stats.input_tokens')}</th>
                   <th>{t('usage_stats.output_tokens')}</th>
                   <th>{t('usage_stats.reasoning_tokens')}</th>
@@ -529,6 +574,21 @@ export function RequestEventsDetailsCard({
                     {hasLatencyData && (
                       <td className={styles.durationCell}>{formatDurationMs(row.latencyMs)}</td>
                     )}
+                    <td className={styles.costCell}>{row.cost > 0 ? formatUsd(row.cost) : '-'}</td>
+                    <td>
+                      {row.requestId ? (
+                        <button
+                          type="button"
+                          className={styles.requestIdLink}
+                          onClick={() => void handleViewLog(row.requestId)}
+                          title={t('usage_stats.request_events_view_log')}
+                        >
+                          {row.requestId}
+                        </button>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td>{row.inputTokens.toLocaleString()}</td>
                     <td>{row.outputTokens.toLocaleString()}</td>
                     <td>{row.reasoningTokens.toLocaleString()}</td>
@@ -541,6 +601,21 @@ export function RequestEventsDetailsCard({
           </div>
         </>
       )}
+
+      <Modal
+        open={logModal.open}
+        title={t('usage_stats.request_log_modal_title', { id: logModal.requestId })}
+        onClose={handleCloseLogModal}
+        width={720}
+      >
+        {logModal.loading ? (
+          <div className={styles.logModalLoading}>{t('common.loading')}</div>
+        ) : logModal.error ? (
+          <div className={styles.logModalError}>{logModal.error}</div>
+        ) : (
+          <pre className={styles.logModalContent}>{logModal.content}</pre>
+        )}
+      </Modal>
     </Card>
   );
 }

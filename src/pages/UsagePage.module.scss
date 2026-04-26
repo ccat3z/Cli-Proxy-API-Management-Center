@@ -969,6 +969,54 @@
   white-space: nowrap;
 }
 
+.costCell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.requestIdLink {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-primary, #3b82f6);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: var(--color-primary-hover, #2563eb);
+  }
+}
+
+.logModalLoading,
+.logModalError {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-secondary);
+}
+
+.logModalError {
+  color: var(--failure-badge-text);
+}
+
+.logModalContent {
+  max-height: 60vh;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: $radius-sm;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 .chartLineHeader {
   display: inline-flex;
   align-items: center;

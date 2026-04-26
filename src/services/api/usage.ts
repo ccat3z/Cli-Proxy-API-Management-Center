@@ -33,6 +33,15 @@ export const usageApi = {
     }),
 
   /**
+   * 根据 request ID 获取请求日志
+   */
+  getRequestLog: (id: string) =>
+    apiClient.get<string>(`/request-log-by-id/${encodeURIComponent(id)}`, {
+      responseType: 'text',
+      timeout: USAGE_TIMEOUT_MS,
+    }),
+
+  /**
    * 导出使用统计快照
    */
   exportUsage: () => apiClient.get<UsageExportPayload>('/usage/export', { timeout: USAGE_TIMEOUT_MS }),

@@ -397,6 +397,7 @@ export function UsagePage() {
       <RequestEventsDetailsCard
         usage={usage}
         loading={loading}
+        modelPrices={modelPrices}
         geminiKeys={config?.geminiApiKeys || []}
         claudeConfigs={config?.claudeApiKeys || []}
         codexConfigs={config?.codexApiKeys || []}

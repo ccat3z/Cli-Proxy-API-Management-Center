@@ -68,6 +68,7 @@ export interface UsageDetail {
   };
   failed: boolean;
   cost?: number;
+  request_id?: string;
   __modelName?: string;
   __timestampMs?: number;
 }
@@ -560,6 +561,7 @@ export function collectUsageDetails(usageData: unknown): UsageDetail[] {
           tokens: tokensRaw as unknown as UsageDetail['tokens'],
           failed: detailRaw.failed === true,
           cost: typeof detailRaw.cost === 'number' ? detailRaw.cost : undefined,
+          request_id: typeof detailRaw.request_id === 'string' ? detailRaw.request_id : undefined,
           __modelName: modelName,
           __timestampMs: Number.isNaN(timestampMs) ? 0 : timestampMs,
         });
@@ -638,6 +640,7 @@ export function collectUsageDetailsWithEndpoint(usageData: unknown): UsageDetail
           tokens: tokensRaw as unknown as UsageDetail['tokens'],
           failed: detailRaw.failed === true,
           cost: typeof detailRaw.cost === 'number' ? detailRaw.cost : undefined,
+          request_id: typeof detailRaw.request_id === 'string' ? detailRaw.request_id : undefined,
           __modelName: modelName,
           __endpoint: endpoint,
           __endpointMethod: endpointMethod,
