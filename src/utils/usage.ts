@@ -1523,8 +1523,10 @@ export function calculateServiceHealthData(usageDetails: UsageDetail[], windowHo
   const BLOCK_COUNT = ROWS * COLS;
   const WINDOW_MS = BLOCK_COUNT * BLOCK_DURATION_MS;
 
-  const now = Date.now();
-  const windowStart = now - WINDOW_MS;
+  const rawNow = Date.now();
+  // Align window end to the next 10-minute boundary so blocks start at :00, :10, :20, etc.
+  const windowEnd = Math.ceil(rawNow / BLOCK_DURATION_MS) * BLOCK_DURATION_MS;
+  const windowStart = windowEnd - WINDOW_MS;
 
   const blockStats: Array<{ success: number; failure: number }> = Array.from(
     { length: BLOCK_COUNT },
@@ -1543,12 +1545,12 @@ export function calculateServiceHealthData(usageDetails: UsageDetail[], windowHo
       !Number.isFinite(timestamp) ||
       timestamp <= 0 ||
       timestamp < windowStart ||
-      timestamp > now
+      timestamp > windowEnd
     ) {
       return;
     }
 
-    const ageMs = now - timestamp;
+    const ageMs = windowEnd - timestamp;
     const blockIndex = BLOCK_COUNT - 1 - Math.floor(ageMs / BLOCK_DURATION_MS);
 
     if (blockIndex >= 0 && blockIndex < BLOCK_COUNT) {
