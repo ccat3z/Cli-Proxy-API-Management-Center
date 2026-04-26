@@ -58,9 +58,10 @@ export interface ServiceHealthCardProps {
   usage: UsagePayload | null;
   loading: boolean;
   windowHours: number;
+  timeRange: string;
 }
 
-export function ServiceHealthCard({ usage, loading, windowHours }: ServiceHealthCardProps) {
+export function ServiceHealthCard({ usage, loading, windowHours, timeRange }: ServiceHealthCardProps) {
   const { t } = useTranslation();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltipState | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -228,7 +229,7 @@ export function ServiceHealthCard({ usage, loading, windowHours }: ServiceHealth
       <div className={styles.healthHeader}>
         <h3 className={styles.healthTitle}>{t('service_health.title')}</h3>
         <div className={styles.healthMeta}>
-          <span className={styles.healthWindow}>{t('service_health.window')}</span>
+          <span className={styles.healthWindow}>{t(`usage_stats.range_${timeRange ?? '7d'}`)}</span>
           <span className={`${styles.healthRate} ${rateClass}`}>
             {loading ? '--' : hasData ? `${healthData.successRate.toFixed(1)}%` : '--'}
           </span>

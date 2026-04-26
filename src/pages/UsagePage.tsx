@@ -307,7 +307,7 @@ export function UsagePage() {
       />
 
       {/* Service Health */}
-      <ServiceHealthCard usage={usage} loading={loading} windowHours={windowHours} />
+      <ServiceHealthCard usage={usage} loading={loading} windowHours={windowHours} timeRange={timeRange} />
 
       {/* Charts Grid */}
       <div className={styles.chartsGrid}>
