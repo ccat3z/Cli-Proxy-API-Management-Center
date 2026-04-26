@@ -11,7 +11,6 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Select } from '@/components/ui/Select';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -147,13 +146,7 @@ export function UsagePage() {
     lastRefreshedAt,
     modelPrices,
     setModelPrices,
-    loadUsage,
-    handleExport,
-    handleImport,
-    handleImportChange,
-    importInputRef,
-    exporting,
-    importing
+    loadUsage
   } = useUsageData(windowHours);
 
   useHeaderRefresh(loadUsage);
@@ -265,7 +258,14 @@ export function UsagePage() {
       )}
 
       <div className={styles.header}>
-        <h1 className={styles.pageTitle}>{t('usage_stats.title')}</h1>
+        <div className={styles.headerTitleGroup}>
+          <h1 className={styles.pageTitle}>{t('usage_stats.title')}</h1>
+          {lastRefreshedAt && (
+            <span className={styles.lastRefreshed}>
+              {t('usage_stats.last_updated')}: {lastRefreshedAt.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
         <div className={styles.headerActions}>
           <div className={styles.timeRangeGroup}>
             <span className={styles.timeRangeLabel}>{t('usage_stats.range_filter')}</span>
@@ -278,44 +278,6 @@ export function UsagePage() {
               fullWidth={false}
             />
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleExport}
-            loading={exporting}
-            disabled={loading || importing}
-          >
-            {t('usage_stats.export')}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleImport}
-            loading={importing}
-            disabled={loading || exporting}
-          >
-            {t('usage_stats.import')}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void loadUsage().catch(() => {})}
-            disabled={loading || exporting || importing}
-          >
-            {loading ? t('common.loading') : t('usage_stats.refresh')}
-          </Button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".json,application/json"
-            style={{ display: 'none' }}
-            onChange={handleImportChange}
-          />
-          {lastRefreshedAt && (
-            <span className={styles.lastRefreshed}>
-              {t('usage_stats.last_updated')}: {lastRefreshedAt.toLocaleTimeString()}
-            </span>
-          )}
         </div>
       </div>
 

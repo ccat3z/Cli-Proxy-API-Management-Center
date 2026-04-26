@@ -18,6 +18,12 @@
   gap: 10px;
 }
 
+.headerTitleGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
 .headerActions {
   display: flex;
   align-items: center;
