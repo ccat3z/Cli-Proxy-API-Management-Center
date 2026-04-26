@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -28,6 +28,39 @@ import styles from '@/pages/UsagePage.module.scss';
 
 const ALL_FILTER = '__all__';
 const MAX_RENDERED_EVENTS = 500;
+
+interface LogSection {
+  title: string;
+  body: string;
+}
+
+const SECTION_HEADER_RE = /^=== (.+) ===$/;
+
+const SECTIONS_COLLAPSED_BY_DEFAULT = new Set(['REQUEST BODY', 'RESPONSE']);
+
+function parseLogSections(text: string): LogSection[] {
+  const lines = text.split('\n');
+  const sections: LogSection[] = [];
+  let currentTitle = '';
+  let currentBody: string[] = [];
+
+  for (const line of lines) {
+    const match = SECTION_HEADER_RE.exec(line);
+    if (match) {
+      if (currentTitle || currentBody.length) {
+        sections.push({ title: currentTitle, body: currentBody.join('\n') });
+      }
+      currentTitle = match[1];
+      currentBody = [];
+    } else {
+      currentBody.push(line);
+    }
+  }
+  if (currentTitle || currentBody.length) {
+    sections.push({ title: currentTitle, body: currentBody.join('\n') });
+  }
+  return sections;
+}
 
 type RequestEventRow = {
   id: string;
@@ -343,6 +376,11 @@ export function RequestEventsDetailsCard({
     });
   };
 
+  const logSections = useMemo(
+    () => (logModal.content ? parseLogSections(logModal.content) : []),
+    [logModal.content]
+  );
+
   const handleCloseLogModal = () => {
     setLogModal((prev) => ({ ...prev, open: false }));
   };
@@ -632,9 +670,81 @@ export function RequestEventsDetailsCard({
         ) : logModal.error ? (
           <div className={styles.logModalError}>{logModal.error}</div>
         ) : (
-          <pre className={styles.logModalContent}>{logModal.content}</pre>
+          <div className={styles.logSections}>
+            {logSections.map((section, idx) => (
+              <LogSectionView
+                key={idx}
+                section={section}
+                defaultCollapsed={SECTIONS_COLLAPSED_BY_DEFAULT.has(section.title)}
+              />
+            ))}
+          </div>
         )}
       </Modal>
     </Card>
   );
+}
+
+function LogSectionView({
+  section,
+  defaultCollapsed,
+}: {
+  section: LogSection;
+  defaultCollapsed: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const toggle = useCallback(() => setCollapsed((c) => !c), []);
+
+  const bodyLines = section.body.split('\n').filter((l) => l !== '');
+
+  return (
+    <div className={styles.logSection}>
+      <button className={styles.logSectionHeader} onClick={toggle}>
+        <span className={`${styles.logSectionChevron} ${collapsed ? '' : styles.logSectionChevronOpen}`}>
+          ▶
+        </span>
+        <span className={styles.logSectionTitle}>{section.title}</span>
+        <span className={styles.logSectionLineCount}>{bodyLines.length}</span>
+      </button>
+      {!collapsed && (
+        <div className={styles.logSectionBody}>
+          {bodyLines.map((line, i) => (
+            <LogLine key={i} line={line} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LogLine({ line }: { line: string }) {
+  if (line.startsWith('event:')) {
+    return (
+      <div className={styles.logLine}>
+        <span className={styles.logLineEvent}>event:</span>
+        <span className={styles.logLineEventValue}>{line.slice(7)}</span>
+      </div>
+    );
+  }
+  if (line.startsWith('data:')) {
+    return (
+      <div className={styles.logLine}>
+        <span className={styles.logLineData}>data:</span>
+        <span className={styles.logLineDataValue}>{line.slice(6)}</span>
+      </div>
+    );
+  }
+  if (line.startsWith('Headers:') || line.startsWith('Body:')) {
+    return <div className={styles.logLineSubHeader}>{line}</div>;
+  }
+  if (/^[A-Z][A-Za-z ]+:/.test(line)) {
+    const colonIdx = line.indexOf(':');
+    return (
+      <div className={styles.logLine}>
+        <span className={styles.logLineKey}>{line.slice(0, colonIdx + 1)}</span>
+        <span>{line.slice(colonIdx + 1)}</span>
+      </div>
+    );
+  }
+  return <div className={styles.logLine}>{line}</div>;
 }

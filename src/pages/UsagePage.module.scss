@@ -1002,19 +1002,108 @@
   color: var(--failure-badge-text);
 }
 
-.logModalContent {
-  max-height: 60vh;
-  overflow: auto;
-  margin: 0;
-  padding: 12px;
+.logSections {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.logSection {
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  overflow: hidden;
+}
+
+.logSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 0;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--bg-tertiary);
+  }
+}
+
+.logSectionChevron {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.logSectionChevronOpen {
+  transform: rotate(90deg);
+}
+
+.logSectionTitle {
+  flex: 1;
+  letter-spacing: 0.03em;
+}
+
+.logSectionLineCount {
+  font-size: 10px;
+  color: var(--text-tertiary);
   background: var(--bg-tertiary);
-  border-radius: $radius-sm;
+  padding: 1px 6px;
+  border-radius: $radius-full;
+}
+
+.logSectionBody {
+  padding: 8px 12px;
+  background: var(--bg-primary);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11.5px;
+  line-height: 1.6;
+  overflow: auto;
+  max-height: 240px;
+}
+
+.logLine {
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.logLineKey {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.logLineEvent {
+  color: var(--warning-color);
+  font-weight: 600;
+}
+
+.logLineEventValue {
+  color: var(--text-secondary);
+}
+
+.logLineData {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.logLineDataValue {
+  color: var(--text-secondary);
+}
+
+.logLineSubHeader {
+  font-weight: 700;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border-color);
 }
 
 .chartLineHeader {
