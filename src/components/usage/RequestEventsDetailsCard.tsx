@@ -698,28 +698,83 @@ function LogSectionView({
   collapsed: boolean;
   onToggle: () => void;
 }) {
-
+  const [formatted, setFormatted] = useState(true);
   const bodyLines = section.body.split('\n').filter((l) => l !== '');
   const bodyBytes = new Blob([section.body]).size;
 
   return (
     <div className={styles.logSection}>
-      <button className={styles.logSectionHeader} onClick={onToggle}>
-        <span className={`${styles.logSectionChevron} ${collapsed ? '' : styles.logSectionChevronOpen}`}>
-          ▶
-        </span>
-        <span className={styles.logSectionTitle}>{section.title}</span>
+      <div className={styles.logSectionHeader}>
+        <button className={styles.logSectionHeaderLeft} onClick={onToggle}>
+          <span className={`${styles.logSectionChevron} ${collapsed ? '' : styles.logSectionChevronOpen}`}>
+            ▶
+          </span>
+          <span className={styles.logSectionTitle}>{section.title}</span>
+        </button>
+        {!collapsed && (
+          <span
+            className={styles.logSectionFormatToggle}
+            onClick={() => setFormatted((f) => !f)}
+          >
+            {formatted ? 'pretty' : 'raw'}
+          </span>
+        )}
         <span className={styles.logSectionLineCount}>{bodyBytes >= 1024 ? `${(bodyBytes / 1024).toFixed(1)} KB` : `${bodyBytes} B`}</span>
-      </button>
+      </div>
       {!collapsed && (
         <div className={styles.logSectionBody}>
-          {bodyLines.map((line, i) => (
-            <LogLine key={i} line={line} />
-          ))}
+          {formatted ? (
+            bodyLines.map((line, i) => (
+              <FormattedLine key={i} line={line} />
+            ))
+          ) : (
+            bodyLines.map((line, i) => (
+              <LogLine key={i} line={line} />
+            ))
+          )}
         </div>
       )}
     </div>
   );
+}
+
+function FormattedLine({ line }: { line: string }) {
+  if (line.startsWith('event:')) {
+    return (
+      <div className={styles.logLine}>
+        <span className={styles.logLineEvent}>event:</span>
+        <span className={styles.logLineEventValue}>{line.slice(7)}</span>
+      </div>
+    );
+  }
+  if (line.startsWith('data:')) {
+    const dataStr = line.slice(5).trim();
+    try {
+      const parsed = JSON.parse(dataStr);
+      return (
+        <div className={styles.logLine}>
+          <span className={styles.logLineData}>data:</span>
+          <YamlBlock value={parsed} />
+        </div>
+      );
+    } catch {
+      return (
+        <div className={styles.logLine}>
+          <span className={styles.logLineData}>data:</span>
+          <span className={styles.logLineDataValue}>{dataStr}</span>
+        </div>
+      );
+    }
+  }
+  if (line.startsWith('{') || line.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(line);
+      return <YamlBlock value={parsed} />;
+    } catch {
+      return <div className={styles.logLine}>{line}</div>;
+    }
+  }
+  return <LogLine line={line} />;
 }
 
 function LogLine({ line }: { line: string }) {
@@ -752,12 +807,7 @@ function LogLine({ line }: { line: string }) {
     );
   }
   if (line.startsWith('{') || line.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(line);
-      return <YamlBlock value={parsed} />;
-    } catch {
-      return <div className={styles.logLine}>{line}</div>;
-    }
+    return <div className={styles.logLine}>{line}</div>;
   }
   return <div className={styles.logLine}>{line}</div>;
 }
