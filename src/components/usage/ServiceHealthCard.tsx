@@ -57,17 +57,18 @@ function formatDateTime(timestamp: number): string {
 export interface ServiceHealthCardProps {
   usage: UsagePayload | null;
   loading: boolean;
+  windowHours: number;
 }
 
-export function ServiceHealthCard({ usage, loading }: ServiceHealthCardProps) {
+export function ServiceHealthCard({ usage, loading, windowHours }: ServiceHealthCardProps) {
   const { t } = useTranslation();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltipState | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const healthData: ServiceHealthData = useMemo(() => {
     const details = usage ? collectUsageDetails(usage) : [];
-    return calculateServiceHealthData(details);
-  }, [usage]);
+    return calculateServiceHealthData(details, windowHours);
+  }, [usage, windowHours]);
 
   const hasData = healthData.totalSuccess + healthData.totalFailure > 0;
 

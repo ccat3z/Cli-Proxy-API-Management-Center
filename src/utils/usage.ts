@@ -1516,12 +1516,12 @@ export interface ServiceHealthData {
   cols: number;
 }
 
-export function calculateServiceHealthData(usageDetails: UsageDetail[]): ServiceHealthData {
+export function calculateServiceHealthData(usageDetails: UsageDetail[], windowHours = 168): ServiceHealthData {
   const ROWS = 7;
   const COLS = 96;
   const BLOCK_COUNT = ROWS * COLS; // 672
-  const BLOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-  const WINDOW_MS = BLOCK_COUNT * BLOCK_DURATION_MS; // 168 hours (7 days)
+  const BLOCK_DURATION_MS = Math.max(1, Math.round((windowHours * 3600 * 1000) / BLOCK_COUNT));
+  const WINDOW_MS = BLOCK_COUNT * BLOCK_DURATION_MS;
 
   const now = Date.now();
   const windowStart = now - WINDOW_MS;
