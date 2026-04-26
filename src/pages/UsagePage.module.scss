@@ -1067,7 +1067,7 @@
   font-size: 11.5px;
   line-height: 1.6;
   overflow: auto;
-  max-height: 240px;
+  max-height: 50vh;
 }
 
 .logLine {
@@ -1104,6 +1104,47 @@
   margin-top: 6px;
   padding-top: 4px;
   border-top: 1px dashed var(--border-color);
+}
+
+.yamlBlock {
+  padding: 6px 0;
+  border-left: 2px solid var(--border-color);
+  padding-left: 8px;
+  margin: 2px 0;
+}
+
+.yamlKey {
+  color: var(--primary-color);
+}
+
+.yamlString {
+  color: var(--success-color);
+}
+
+.yamlNumber {
+  color: var(--warning-color);
+}
+
+.yamlBool {
+  color: var(--info-color, var(--primary-color));
+}
+
+.yamlNull {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.yamlDash {
+  color: var(--text-tertiary);
+}
+
+.yamlPipe {
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.yamlLiteral {
+  color: var(--success-color);
 }
 
 .chartLineHeader {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -36,7 +36,6 @@ interface LogSection {
 
 const SECTION_HEADER_RE = /^=== (.+) ===$/;
 
-const SECTIONS_COLLAPSED_BY_DEFAULT = new Set(['REQUEST BODY', 'RESPONSE']);
 
 function parseLogSections(text: string): LogSection[] {
   const lines = text.split('\n');
@@ -355,9 +354,11 @@ export function RequestEventsDetailsCard({
     loading: boolean;
     error: string | null;
   }>({ open: false, requestId: '', content: '', loading: false, error: null });
+  const [expandedSection, setExpandedSection] = useState(-1);
 
   const handleViewLog = async (requestId: string) => {
     setLogModal({ open: true, requestId, content: '', loading: true, error: null });
+    setExpandedSection(-1);
     try {
       const response = await usageApi.getRequestLog(requestId);
       const text = typeof response === 'string' ? response : JSON.stringify(response, null, 2);
@@ -652,7 +653,7 @@ export function RequestEventsDetailsCard({
         open={logModal.open}
         title={t('usage_stats.request_log_modal_title', { id: logModal.requestId })}
         onClose={handleCloseLogModal}
-        width={720}
+        fullscreen
         headerActions={
           !logModal.loading && !logModal.error && logModal.content
             ? [
@@ -675,7 +676,10 @@ export function RequestEventsDetailsCard({
               <LogSectionView
                 key={idx}
                 section={section}
-                defaultCollapsed={SECTIONS_COLLAPSED_BY_DEFAULT.has(section.title)}
+                collapsed={expandedSection !== idx}
+                onToggle={() =>
+                  setExpandedSection((prev) => (prev === idx ? -1 : idx))
+                }
               />
             ))}
           </div>
@@ -687,19 +691,19 @@ export function RequestEventsDetailsCard({
 
 function LogSectionView({
   section,
-  defaultCollapsed,
+  collapsed,
+  onToggle,
 }: {
   section: LogSection;
-  defaultCollapsed: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  const toggle = useCallback(() => setCollapsed((c) => !c), []);
 
   const bodyLines = section.body.split('\n').filter((l) => l !== '');
 
   return (
     <div className={styles.logSection}>
-      <button className={styles.logSectionHeader} onClick={toggle}>
+      <button className={styles.logSectionHeader} onClick={onToggle}>
         <span className={`${styles.logSectionChevron} ${collapsed ? '' : styles.logSectionChevronOpen}`}>
           ▶
         </span>
@@ -746,5 +750,189 @@ function LogLine({ line }: { line: string }) {
       </div>
     );
   }
+  if (line.startsWith('{') || line.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(line);
+      return <YamlBlock value={parsed} />;
+    } catch {
+      return <div className={styles.logLine}>{line}</div>;
+    }
+  }
   return <div className={styles.logLine}>{line}</div>;
+}
+
+type YamlToken =
+  | { type: 'indent'; depth: number }
+  | { type: 'key'; value: string }
+  | { type: 'colon' }
+  | { type: 'string'; value: string }
+  | { type: 'number'; value: string }
+  | { type: 'bool'; value: string }
+  | { type: 'null' }
+  | { type: 'dash' }
+  | { type: 'pipe' }
+  | { type: 'literal-line'; value: string };
+
+function jsonToYamlTokens(value: unknown, depth = 0): YamlToken[][] {
+  const ind = (d = depth) => [{ type: 'indent' as const, depth: d }];
+  const lines: YamlToken[][] = [];
+
+  if (value === null || value === undefined) {
+    lines.push([...ind(), { type: 'null' }]);
+    return lines;
+  }
+  if (typeof value === 'boolean') {
+    lines.push([...ind(), { type: 'bool', value: String(value) }]);
+    return lines;
+  }
+  if (typeof value === 'number') {
+    lines.push([...ind(), { type: 'number', value: String(value) }]);
+    return lines;
+  }
+  if (typeof value === 'string') {
+    if (value.includes('\n')) {
+      lines.push([...ind(), { type: 'pipe' }]);
+      for (const line of value.split('\n')) {
+        lines.push([{ type: 'indent', depth: depth + 1 }, { type: 'literal-line', value: line }]);
+      }
+    } else {
+      lines.push([...ind(), { type: 'string', value }]);
+    }
+    return lines;
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      lines.push([...ind(), { type: 'string', value: '[]' }]);
+      return lines;
+    }
+    for (const item of value) {
+      const inner = jsonToYamlTokens(item, depth);
+      if (inner.length > 0) {
+        const first = inner[0];
+        lines.push([
+          ...ind(depth > 0 ? depth - 1 : 0),
+          { type: 'dash' },
+          ...(first[0]?.type === 'indent' ? first.slice(1) : first),
+        ]);
+        lines.push(...inner.slice(1));
+      }
+    }
+    return lines;
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) {
+      lines.push([...ind(), { type: 'string', value: '{}' }]);
+      return lines;
+    }
+    for (const [k, v] of entries) {
+      if (typeof v === 'object' && v !== null) {
+        lines.push([...ind(), { type: 'key', value: k }, { type: 'colon' }]);
+        lines.push(...jsonToYamlTokens(v, depth + 1));
+      } else if (typeof v === 'string' && v.includes('\n')) {
+        lines.push([...ind(), { type: 'key', value: k }, { type: 'colon' }, { type: 'pipe' }]);
+        const literalLines = v.split('\n');
+        for (const line of literalLines) {
+          lines.push([
+            ...ind(depth + 1),
+            { type: 'literal-line', value: line },
+          ]);
+        }
+      } else {
+        const valTokens = jsonToYamlTokens(v, 0);
+        const firstLine = valTokens[0];
+        if (firstLine) {
+          const withoutIndent = firstLine[0]?.type === 'indent' ? firstLine.slice(1) : firstLine;
+          lines.push([...ind(), { type: 'key', value: k }, { type: 'colon' }, ...withoutIndent]);
+          lines.push(...valTokens.slice(1));
+        }
+      }
+    }
+    return lines;
+  }
+  lines.push([...ind(), { type: 'string', value: String(value) }]);
+  return lines;
+}
+
+function YamlBlock({ value }: { value: unknown }) {
+  const tokens = useMemo(() => jsonToYamlTokens(value), [value]);
+  return (
+    <div className={styles.yamlBlock}>
+      {tokens.map((line, i) => (
+        <YamlLine key={i} tokens={line} />
+      ))}
+    </div>
+  );
+}
+
+function YamlLine({ tokens }: { tokens: YamlToken[] }) {
+  return (
+    <div className={styles.logLine}>
+      {tokens.map((tok, i) => {
+        switch (tok.type) {
+          case 'indent':
+            return <span key={i}>{'  '.repeat(tok.depth)}</span>;
+          case 'key':
+            return (
+              <span key={i} className={styles.yamlKey}>
+                {tok.value}
+              </span>
+            );
+          case 'colon':
+            return <span key={i}>:</span>;
+          case 'string':
+            return (
+              <span key={i} className={styles.yamlString}>
+                {needsQuote(tok.value) ? JSON.stringify(tok.value) : tok.value}
+              </span>
+            );
+          case 'number':
+            return (
+              <span key={i} className={styles.yamlNumber}>
+                {tok.value}
+              </span>
+            );
+          case 'bool':
+            return (
+              <span key={i} className={styles.yamlBool}>
+                {tok.value}
+              </span>
+            );
+          case 'null':
+            return (
+              <span key={i} className={styles.yamlNull}>
+                null
+              </span>
+            );
+          case 'dash':
+            return (
+              <span key={i} className={styles.yamlDash}>
+                -{' '}
+              </span>
+            );
+          case 'pipe':
+            return (
+              <span key={i} className={styles.yamlPipe}>
+                {' |'}
+              </span>
+            );
+          case 'literal-line':
+            return (
+              <span key={i} className={styles.yamlLiteral}>
+                {tok.value}
+              </span>
+            );
+        }
+      })}
+    </div>
+  );
+}
+
+function needsQuote(s: string): boolean {
+  if (s === '') return true;
+  if (/[:\{\}\[\],&\*#\?|\-<>=!%@\\]/.test(s)) return true;
+  if (s === 'true' || s === 'false' || s === 'null') return true;
+  if (/^\d/.test(s)) return true;
+  if (s.includes('\n')) return true;
+  return false;
 }

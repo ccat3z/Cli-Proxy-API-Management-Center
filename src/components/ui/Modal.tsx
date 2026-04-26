@@ -33,6 +33,7 @@ interface ModalProps {
   width?: number | string;
   className?: string;
   closeDisabled?: boolean;
+  fullscreen?: boolean;
 }
 
 const CLOSE_ANIMATION_DURATION = 350;
@@ -139,6 +140,7 @@ export function Modal({
   width = 520,
   className,
   closeDisabled = false,
+  fullscreen = false,
   children,
 }: PropsWithChildren<ModalProps>) {
   const { t } = useTranslation();
@@ -284,15 +286,15 @@ export function Modal({
 
   if (!open && !isVisible) return null;
 
-  const overlayClass = `modal-overlay ${isClosing ? 'modal-overlay-closing' : 'modal-overlay-entering'}`;
-  const modalClass = `modal ${isClosing ? 'modal-closing' : 'modal-entering'}${className ? ` ${className}` : ''}`;
+  const overlayClass = `modal-overlay ${isClosing ? 'modal-overlay-closing' : 'modal-overlay-entering'}${fullscreen ? ' modal-overlay-fullscreen' : ''}`;
+  const modalClass = `modal ${isClosing ? 'modal-closing' : 'modal-entering'}${fullscreen ? ' modal-fullscreen' : ''}${className ? ` ${className}` : ''}`;
 
   const modalContent = (
     <div className={overlayClass}>
       <div
         ref={modalRef}
         className={modalClass}
-        style={{ width, maxWidth: '100%' }}
+        style={fullscreen ? undefined : { width, maxWidth: '100%' }}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}

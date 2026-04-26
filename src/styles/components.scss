@@ -427,6 +427,17 @@ textarea {
   &.modal-closing {
     animation: modal-collapse-to-close 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
+
+  &.modal-fullscreen {
+    width: 96vw;
+    height: 94vh;
+    max-height: 94vh;
+    border-radius: $radius-md;
+  }
+}
+
+.modal-overlay-fullscreen {
+  padding: 3vh 2vw;
 }
 
 @keyframes modal-scale-in {
@@ -564,6 +575,11 @@ textarea {
   padding: $spacing-lg;
   overflow: auto;
   max-height: 65vh;
+
+  .modal-fullscreen & {
+    flex: 1;
+    max-height: none;
+  }
 }
 
 .modal-footer {
