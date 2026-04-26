@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -771,9 +771,16 @@ type YamlToken =
   | { type: 'null' }
   | { type: 'dash' }
   | { type: 'pipe' }
-  | { type: 'literal-line'; value: string };
+  | { type: 'literal-line'; value: string }
+  | { type: 'fold-marker'; collapsed: boolean; count: number };
 
-function jsonToYamlTokens(value: unknown, depth = 0): YamlToken[][] {
+const TOP_LEVEL_KEY_ORDER = ['system', 'tools', 'messages'];
+
+function jsonToYamlTokens(
+  value: unknown,
+  depth = 0,
+  collapsedKeys?: Set<string>,
+): YamlToken[][] {
   const ind = (d = depth) => [{ type: 'indent' as const, depth: d }];
   const lines: YamlToken[][] = [];
 
@@ -791,8 +798,9 @@ function jsonToYamlTokens(value: unknown, depth = 0): YamlToken[][] {
   }
   if (typeof value === 'string') {
     if (value.includes('\n')) {
+      const allLines = value.split('\n');
       lines.push([...ind(), { type: 'pipe' }]);
-      for (const line of value.split('\n')) {
+      for (const line of allLines) {
         lines.push([{ type: 'indent', depth: depth + 1 }, { type: 'literal-line', value: line }]);
       }
     } else {
@@ -820,23 +828,49 @@ function jsonToYamlTokens(value: unknown, depth = 0): YamlToken[][] {
     return lines;
   }
   if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>);
+    let entries = Object.entries(value as Record<string, unknown>);
     if (entries.length === 0) {
       lines.push([...ind(), { type: 'string', value: '{}' }]);
       return lines;
     }
+    if (depth === 0) {
+      const ordered: [string, unknown][] = [];
+      const tail: [string, unknown][] = [];
+      for (const entry of entries) {
+        if (TOP_LEVEL_KEY_ORDER.includes(entry[0])) {
+          tail.push(entry);
+        } else {
+          ordered.push(entry);
+        }
+      }
+      tail.sort(
+        (a, b) =>
+          TOP_LEVEL_KEY_ORDER.indexOf(a[0]) - TOP_LEVEL_KEY_ORDER.indexOf(b[0]),
+      );
+      entries = [...ordered, ...tail];
+    }
     for (const [k, v] of entries) {
+      const isCollapsed = collapsedKeys?.has(k) ?? false;
       if (typeof v === 'object' && v !== null) {
         lines.push([...ind(), { type: 'key', value: k }, { type: 'colon' }]);
-        lines.push(...jsonToYamlTokens(v, depth + 1));
+        const inner = jsonToYamlTokens(v, depth + 1, collapsedKeys);
+        if (isCollapsed) {
+          lines.push([{ type: 'fold-marker', collapsed: true, count: inner.length }]);
+        } else {
+          lines.push(...inner);
+        }
       } else if (typeof v === 'string' && v.includes('\n')) {
         lines.push([...ind(), { type: 'key', value: k }, { type: 'colon' }, { type: 'pipe' }]);
-        const literalLines = v.split('\n');
-        for (const line of literalLines) {
-          lines.push([
-            ...ind(depth + 1),
-            { type: 'literal-line', value: line },
-          ]);
+        if (isCollapsed) {
+          const lineCount = v.split('\n').length;
+          lines.push([{ type: 'fold-marker', collapsed: true, count: lineCount }]);
+        } else {
+          for (const line of v.split('\n')) {
+            lines.push([
+              ...ind(depth + 1),
+              { type: 'literal-line', value: line },
+            ]);
+          }
         }
       } else {
         const valTokens = jsonToYamlTokens(v, 0);
@@ -854,18 +888,148 @@ function jsonToYamlTokens(value: unknown, depth = 0): YamlToken[][] {
   return lines;
 }
 
+const COLLAPSED_BY_DEFAULT_KEYS = new Set(['system', 'tools']);
+const MULTILINE_PREVIEW_LINES = 5;
+
 function YamlBlock({ value }: { value: unknown }) {
-  const tokens = useMemo(() => jsonToYamlTokens(value), [value]);
-  return (
-    <div className={styles.yamlBlock}>
-      {tokens.map((line, i) => (
-        <YamlLine key={i} tokens={line} />
-      ))}
-    </div>
+  const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(
+    () => new Set(COLLAPSED_BY_DEFAULT_KEYS),
   );
+  const [expandedLiterals, setExpandedLiterals] = useState<Set<number>>(new Set());
+  const allTokens = useMemo(
+    () => jsonToYamlTokens(value, 0, collapsedKeys),
+    [value, collapsedKeys],
+  );
+
+  const toggleKey = useCallback((key: string) => {
+    setCollapsedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const toggleLiteral = useCallback((idx: number) => {
+    setExpandedLiterals((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }, []);
+
+  // Identify consecutive literal-line runs and render with folding
+  const rendered: React.ReactNode[] = [];
+  let i = 0;
+  while (i < allTokens.length) {
+    const line = allTokens[i];
+    const hasFold = line.some((t) => t.type === 'fold-marker');
+    if (hasFold) {
+      const marker = line.find((t) => t.type === 'fold-marker') as {
+        type: 'fold-marker';
+        collapsed: boolean;
+        count: number;
+      };
+      if (marker.collapsed) {
+        // Replace previous key line: "▶ key: ... N more lines"
+        const lastIdx = rendered.length - 1;
+        if (lastIdx >= 0) {
+          const prevLine = i > 0 ? allTokens[i - 1] : [];
+          const keyToken = prevLine.find((t) => t.type === 'key');
+          const keyName = keyToken && 'value' in keyToken ? keyToken.value : '';
+          rendered[lastIdx] = (
+            <YamlLine
+              key={`foldkey-${i}`}
+              tokens={prevLine}
+              suffix={
+                <span
+                  className={styles.yamlFoldToggle}
+                  onClick={() => keyName && toggleKey(keyName)}
+                >
+                  ... {marker.count} more lines
+                </span>
+              }
+            />
+          );
+        }
+      }
+      i++;
+      continue;
+    }
+    // Check if this line starts a literal-line run
+    const hasPipe = line.some((t) => t.type === 'pipe');
+    if (hasPipe) {
+      // Collect consecutive literal lines
+      const runStart = i + 1;
+      let runEnd = runStart;
+      while (
+        runEnd < allTokens.length &&
+        allTokens[runEnd].some((t) => t.type === 'literal-line')
+      ) {
+        runEnd++;
+      }
+      const literalCount = runEnd - runStart;
+      const isExpanded = expandedLiterals.has(runStart);
+      const canFold = literalCount > MULTILINE_PREVIEW_LINES;
+      // Render pipe line with toggle
+      const pipeSuffix = canFold
+        ? isExpanded
+          ? <span className={styles.yamlFoldToggle} onClick={() => toggleLiteral(runStart)}>collapse</span>
+          : <span className={styles.yamlFoldToggle} onClick={() => toggleLiteral(runStart)}>
+              ... {literalCount - MULTILINE_PREVIEW_LINES} more lines
+            </span>
+        : undefined;
+      rendered.push(
+        <YamlLine key={i} tokens={line} suffix={pipeSuffix} />,
+      );
+      if (canFold && !isExpanded) {
+        for (let j = runStart; j < runStart + MULTILINE_PREVIEW_LINES; j++) {
+          rendered.push(<YamlLine key={j} tokens={allTokens[j]} />);
+        }
+      } else {
+        for (let j = runStart; j < runEnd; j++) {
+          rendered.push(<YamlLine key={j} tokens={allTokens[j]} />);
+        }
+      }
+      i = runEnd;
+      continue;
+    }
+    // Check if this is a key line that belongs to a collapsible section (currently expanded)
+    const keyToken = line.find((t) => t.type === 'key');
+    const keyName = keyToken && 'value' in keyToken ? (keyToken as { type: 'key'; value: string }).value : '';
+    const isCollapsibleKey = COLLAPSED_BY_DEFAULT_KEYS.has(keyName) && !collapsedKeys.has(keyName);
+    if (isCollapsibleKey) {
+      rendered.push(
+        <YamlLine
+          key={i}
+          tokens={line}
+          suffix={
+            <span
+              className={styles.yamlFoldToggle}
+              onClick={() => toggleKey(keyName)}
+            >
+              collapse
+            </span>
+          }
+        />,
+      );
+    } else {
+      rendered.push(<YamlLine key={i} tokens={line} />);
+    }
+    i++;
+  }
+
+  return <div className={styles.yamlBlock}>{rendered}</div>;
 }
 
-function YamlLine({ tokens }: { tokens: YamlToken[] }) {
+function YamlLine({
+  tokens,
+  suffix,
+}: {
+  tokens: YamlToken[];
+  suffix?: React.ReactNode;
+}) {
   return (
     <div className={styles.logLine}>
       {tokens.map((tok, i) => {
@@ -879,7 +1043,7 @@ function YamlLine({ tokens }: { tokens: YamlToken[] }) {
               </span>
             );
           case 'colon':
-            return <span key={i}>:</span>;
+            return <span key={i}>{': '}</span>;
           case 'string':
             return (
               <span key={i} className={styles.yamlString}>
@@ -913,7 +1077,7 @@ function YamlLine({ tokens }: { tokens: YamlToken[] }) {
           case 'pipe':
             return (
               <span key={i} className={styles.yamlPipe}>
-                {' |'}
+                |
               </span>
             );
           case 'literal-line':
@@ -922,8 +1086,11 @@ function YamlLine({ tokens }: { tokens: YamlToken[] }) {
                 {tok.value}
               </span>
             );
+          case 'fold-marker':
+            return null;
         }
       })}
+      {suffix}
     </div>
   );
 }

@@ -1141,10 +1141,23 @@
 .yamlPipe {
   color: var(--text-tertiary);
   font-weight: 600;
+  padding-right: 4px;
 }
 
 .yamlLiteral {
   color: var(--success-color);
+}
+
+.yamlFoldToggle {
+  color: var(--text-tertiary);
+  cursor: pointer;
+  // padding-left: 4px;
+  font-style: italic;
+  font-size: 11px;
+
+  &:hover {
+    color: var(--primary-color);
+  }
 }
 
 .chartLineHeader {
