@@ -488,14 +488,14 @@ export function formatCompactNumber(value: number): string {
 export function formatUsd(value: number): string {
   const num = Number(value);
   if (!Number.isFinite(num)) {
-    return '$0.00';
+    return '¥0.00';
   }
   const fixed = num.toFixed(2);
   const parts = Number(fixed).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return `$${parts}`;
+  return `¥${parts}`;
 }
 
 const usageDetailsCache = new WeakMap<object, UsageDetail[]>();
