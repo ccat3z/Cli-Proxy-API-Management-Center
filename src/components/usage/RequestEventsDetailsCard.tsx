@@ -700,6 +700,7 @@ function LogSectionView({
 }) {
 
   const bodyLines = section.body.split('\n').filter((l) => l !== '');
+  const bodyBytes = new Blob([section.body]).size;
 
   return (
     <div className={styles.logSection}>
@@ -708,7 +709,7 @@ function LogSectionView({
           ▶
         </span>
         <span className={styles.logSectionTitle}>{section.title}</span>
-        <span className={styles.logSectionLineCount}>{bodyLines.length}</span>
+        <span className={styles.logSectionLineCount}>{bodyBytes >= 1024 ? `${(bodyBytes / 1024).toFixed(1)} KB` : `${bodyBytes} B`}</span>
       </button>
       {!collapsed && (
         <div className={styles.logSectionBody}>
