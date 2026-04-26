@@ -22,6 +22,7 @@ type UsageStatsState = {
   error: string | null;
   lastRefreshedAt: number | null;
   scopeKey: string;
+  connectionKey: string;
   loadUsageStats: (options?: LoadUsageStatsOptions) => Promise<void>;
   clearUsageStats: () => void;
 };
@@ -46,15 +47,18 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
   error: null,
   lastRefreshedAt: null,
   scopeKey: '',
+  connectionKey: '',
 
   loadUsageStats: async (options = {}) => {
     const force = options.force === true;
     const staleTimeMs = options.staleTimeMs ?? USAGE_STATS_STALE_TIME_MS;
     const windowHours = options.windowHours;
     const { apiBase = '', managementKey = '' } = useAuthStore.getState();
-    const scopeKey = `${apiBase}::${managementKey}::${windowHours ?? ''}`;
+    const connectionKey = `${apiBase}::${managementKey}`;
+    const scopeKey = `${connectionKey}::${windowHours ?? ''}`;
     const state = get();
     const scopeChanged = state.scopeKey !== scopeKey;
+    const connectionChanged = state.connectionKey !== connectionKey;
 
     // 先复用同源 in-flight 请求，避免多个页面同时发起重复 /usage。
     if (inFlightUsageRequest && inFlightUsageRequest.scopeKey === scopeKey) {
@@ -77,14 +81,16 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
       return;
     }
 
-    if (scopeChanged) {
+    // Only clear data when connection changes, not when window changes
+    if (connectionChanged) {
       set({
         usage: null,
         keyStats: createEmptyKeyStats(),
         usageDetails: [],
         error: null,
         lastRefreshedAt: null,
-        scopeKey
+        scopeKey,
+        connectionKey
       });
     }
 
@@ -140,7 +146,8 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
       loading: false,
       error: null,
       lastRefreshedAt: null,
-      scopeKey: ''
+      scopeKey: '',
+      connectionKey: ''
     });
   }
 }));
