@@ -1517,10 +1517,10 @@ export interface ServiceHealthData {
 }
 
 export function calculateServiceHealthData(usageDetails: UsageDetail[], windowHours = 168): ServiceHealthData {
-  const ROWS = 7;
-  const COLS = 96;
-  const BLOCK_COUNT = ROWS * COLS; // 672
-  const BLOCK_DURATION_MS = Math.max(1, Math.round((windowHours * 3600 * 1000) / BLOCK_COUNT));
+  const ROWS = 6;
+  const BLOCK_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+  const COLS = Math.max(1, Math.round((windowHours * 3600 * 1000) / (ROWS * BLOCK_DURATION_MS)));
+  const BLOCK_COUNT = ROWS * COLS;
   const WINDOW_MS = BLOCK_COUNT * BLOCK_DURATION_MS;
 
   const now = Date.now();
