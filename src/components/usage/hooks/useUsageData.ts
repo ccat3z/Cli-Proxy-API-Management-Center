@@ -30,7 +30,7 @@ export interface UseUsageDataReturn {
   importing: boolean;
 }
 
-export function useUsageData(): UseUsageDataReturn {
+export function useUsageData(windowHours?: number): UseUsageDataReturn {
   const { t } = useTranslation();
   const { showNotification } = useNotificationStore();
   const usageSnapshot = useUsageStatsStore((state) => state.usage);
@@ -45,13 +45,13 @@ export function useUsageData(): UseUsageDataReturn {
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadUsage = useCallback(async () => {
-    await loadUsageStats({ force: true, staleTimeMs: USAGE_STATS_STALE_TIME_MS });
-  }, [loadUsageStats]);
+    await loadUsageStats({ force: true, staleTimeMs: USAGE_STATS_STALE_TIME_MS, windowHours });
+  }, [loadUsageStats, windowHours]);
 
   useEffect(() => {
-    void loadUsageStats({ staleTimeMs: USAGE_STATS_STALE_TIME_MS }).catch(() => {});
+    void loadUsageStats({ staleTimeMs: USAGE_STATS_STALE_TIME_MS, windowHours }).catch(() => {});
     setModelPrices(loadModelPrices());
-  }, [loadUsageStats]);
+  }, [loadUsageStats, windowHours]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -110,7 +110,7 @@ export function useUsageData(): UseUsageDataReturn {
         'success'
       );
       try {
-        await loadUsageStats({ force: true, staleTimeMs: USAGE_STATS_STALE_TIME_MS });
+        await loadUsageStats({ force: true, staleTimeMs: USAGE_STATS_STALE_TIME_MS, windowHours });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : '';
         showNotification(

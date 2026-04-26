@@ -39,7 +39,6 @@ import {
   getModelNamesFromUsage,
   getApiStats,
   getModelStats,
-  filterUsageByTimeRange,
   type UsageTimeRange
 } from '@/utils/usage';
 import styles from './UsagePage.module.scss';
@@ -57,24 +56,27 @@ ChartJS.register(
 );
 
 const CHART_LINES_STORAGE_KEY = 'cli-proxy-usage-chart-lines-v1';
-const TIME_RANGE_STORAGE_KEY = 'cli-proxy-usage-time-range-v1';
+const TIME_RANGE_STORAGE_KEY = 'cli-proxy-usage-time-range-v2';
 const DEFAULT_CHART_LINES = ['all'];
-const DEFAULT_TIME_RANGE: UsageTimeRange = '24h';
+const DEFAULT_TIME_RANGE: UsageTimeRange = '1d';
 const MAX_CHART_LINES = 9;
 const TIME_RANGE_OPTIONS: ReadonlyArray<{ value: UsageTimeRange; labelKey: string }> = [
-  { value: 'all', labelKey: 'usage_stats.range_all' },
-  { value: '7h', labelKey: 'usage_stats.range_7h' },
-  { value: '24h', labelKey: 'usage_stats.range_24h' },
+  { value: '1h', labelKey: 'usage_stats.range_1h' },
+  { value: '3h', labelKey: 'usage_stats.range_3h' },
+  { value: '12h', labelKey: 'usage_stats.range_12h' },
+  { value: '1d', labelKey: 'usage_stats.range_1d' },
   { value: '7d', labelKey: 'usage_stats.range_7d' },
 ];
-const HOUR_WINDOW_BY_TIME_RANGE: Record<Exclude<UsageTimeRange, 'all'>, number> = {
-  '7h': 7,
-  '24h': 24,
-  '7d': 7 * 24
+const HOUR_WINDOW_BY_TIME_RANGE: Record<UsageTimeRange, number> = {
+  '1h': 1,
+  '3h': 3,
+  '12h': 12,
+  '1d': 24,
+  '7d': 7 * 24,
 };
 
 const isUsageTimeRange = (value: unknown): value is UsageTimeRange =>
-  value === '7h' || value === '24h' || value === '7d' || value === 'all';
+  value === '1h' || value === '3h' || value === '12h' || value === '1d' || value === '7d';
 
 const normalizeChartLines = (value: unknown, maxLines = MAX_CHART_LINES): string[] => {
   if (!Array.isArray(value)) {
@@ -129,7 +131,13 @@ export function UsagePage() {
     providers: OpenAIProviderConfig[];
   } | null>(null);
 
-  // Data hook
+  // Time range state
+  const [chartLines, setChartLines] = useState<string[]>(loadChartLines);
+  const [timeRange, setTimeRange] = useState<UsageTimeRange>(loadTimeRange);
+
+  const windowHours = HOUR_WINDOW_BY_TIME_RANGE[timeRange];
+
+  // Data hook — pass windowHours so the API fetches server-side filtered data
   const {
     usage,
     loading,
@@ -144,13 +152,9 @@ export function UsagePage() {
     importInputRef,
     exporting,
     importing
-  } = useUsageData();
+  } = useUsageData(windowHours);
 
   useHeaderRefresh(loadUsage);
-
-  // Chart lines state
-  const [chartLines, setChartLines] = useState<string[]>(loadChartLines);
-  const [timeRange, setTimeRange] = useState<UsageTimeRange>(loadTimeRange);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,13 +191,6 @@ export function UsagePage() {
     [t]
   );
 
-  const filteredUsage = useMemo(
-    () => (usage ? filterUsageByTimeRange(usage, timeRange) : null),
-    [usage, timeRange]
-  );
-  const hourWindowHours =
-    timeRange === 'all' ? undefined : HOUR_WINDOW_BY_TIME_RANGE[timeRange];
-
   const handleChartLinesChange = useCallback((lines: string[]) => {
     setChartLines(normalizeChartLines(lines));
   }, []);
@@ -229,7 +226,7 @@ export function UsagePage() {
     rpmSparkline,
     tpmSparkline,
     costSparkline
-  } = useSparklines({ usage: filteredUsage, loading, nowMs });
+  } = useSparklines({ usage, loading, nowMs, modelPrices });
 
   // Chart data hook
   const {
@@ -241,19 +238,18 @@ export function UsagePage() {
     tokensChartData,
     requestsChartOptions,
     tokensChartOptions
-  } = useChartData({ usage: filteredUsage, chartLines, isDark, isMobile, hourWindowHours });
+  } = useChartData({ usage, chartLines, isDark, isMobile, hourWindowHours: windowHours });
 
   // Derived data
   const modelNames = useMemo(() => getModelNamesFromUsage(usage), [usage]);
   const apiStats = useMemo(
-    () => getApiStats(filteredUsage, modelPrices),
-    [filteredUsage, modelPrices]
+    () => getApiStats(usage, modelPrices),
+    [usage, modelPrices]
   );
   const modelStats = useMemo(
-    () => getModelStats(filteredUsage, modelPrices),
-    [filteredUsage, modelPrices]
+    () => getModelStats(usage, modelPrices),
+    [usage, modelPrices]
   );
-  const hasPrices = Object.keys(modelPrices).length > 0;
 
   return (
     <div className={styles.container}>
@@ -325,7 +321,7 @@ export function UsagePage() {
 
       {/* Stats Overview Cards */}
       <StatCards
-        usage={filteredUsage}
+        usage={usage}
         loading={loading}
         modelPrices={modelPrices}
         nowMs={nowMs}
@@ -375,31 +371,31 @@ export function UsagePage() {
 
       {/* Token Breakdown Chart */}
       <TokenBreakdownChart
-        usage={filteredUsage}
+        usage={usage}
         loading={loading}
         isDark={isDark}
         isMobile={isMobile}
-        hourWindowHours={hourWindowHours}
+        hourWindowHours={windowHours}
       />
 
       {/* Cost Trend Chart */}
       <CostTrendChart
-        usage={filteredUsage}
+        usage={usage}
         loading={loading}
         isDark={isDark}
         isMobile={isMobile}
         modelPrices={modelPrices}
-        hourWindowHours={hourWindowHours}
+        hourWindowHours={windowHours}
       />
 
       {/* Details Grid */}
       <div className={styles.detailsGrid}>
-        <ApiDetailsCard apiStats={apiStats} loading={loading} hasPrices={hasPrices} />
-        <ModelStatsCard modelStats={modelStats} loading={loading} hasPrices={hasPrices} />
+        <ApiDetailsCard apiStats={apiStats} loading={loading} />
+        <ModelStatsCard modelStats={modelStats} loading={loading} />
       </div>
 
       <RequestEventsDetailsCard
-        usage={filteredUsage}
+        usage={usage}
         loading={loading}
         geminiKeys={config?.geminiApiKeys || []}
         claudeConfigs={config?.claudeApiKeys || []}
@@ -410,7 +406,7 @@ export function UsagePage() {
 
       {/* Credential Stats */}
       <CredentialStatsCard
-        usage={filteredUsage}
+        usage={usage}
         loading={loading}
         geminiKeys={config?.geminiApiKeys || []}
         claudeConfigs={config?.claudeApiKeys || []}
@@ -419,12 +415,14 @@ export function UsagePage() {
         openaiProviders={openaiProvidersForUsage}
       />
 
-      {/* Price Settings */}
-      <PriceSettingsCard
-        modelNames={modelNames}
-        modelPrices={modelPrices}
-        onPricesChange={setModelPrices}
-      />
+      {/* Price Settings — hidden: cost now provided by API */}
+      <div style={{ display: 'none' }}>
+        <PriceSettingsCard
+          modelNames={modelNames}
+          modelPrices={modelPrices}
+          onPricesChange={setModelPrices}
+        />
+      </div>
     </div>
   );
 }

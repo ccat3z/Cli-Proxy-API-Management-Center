@@ -7,13 +7,12 @@ import styles from '@/pages/UsagePage.module.scss';
 export interface ApiDetailsCardProps {
   apiStats: ApiStats[];
   loading: boolean;
-  hasPrices: boolean;
 }
 
 type ApiSortKey = 'endpoint' | 'requests' | 'tokens' | 'cost';
 type SortDir = 'asc' | 'desc';
 
-export function ApiDetailsCard({ apiStats, loading, hasPrices }: ApiDetailsCardProps) {
+export function ApiDetailsCard({ apiStats, loading }: ApiDetailsCardProps) {
   const { t } = useTranslation();
   const [expandedApis, setExpandedApis] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<ApiSortKey>('requests');
@@ -69,7 +68,7 @@ export function ApiDetailsCard({ apiStats, loading, hasPrices }: ApiDetailsCardP
               ['endpoint', 'usage_stats.api_endpoint'],
               ['requests', 'usage_stats.requests_count'],
               ['tokens', 'usage_stats.tokens_count'],
-              ...(hasPrices ? [['cost', 'usage_stats.total_cost']] : []),
+              ['cost', 'usage_stats.total_cost'],
             ] as [ApiSortKey, string][]).map(([key, labelKey]) => (
               <button
                 key={key}
@@ -114,7 +113,7 @@ export function ApiDetailsCard({ apiStats, loading, hasPrices }: ApiDetailsCardP
                           <span className={styles.apiBadge}>
                             {t('usage_stats.tokens_count')}: {formatCompactNumber(api.totalTokens)}
                           </span>
-                          {hasPrices && api.totalCost > 0 && (
+                          {api.totalCost > 0 && (
                             <span className={styles.apiBadge}>
                               {t('usage_stats.total_cost')}: {formatUsd(api.totalCost)}
                             </span>

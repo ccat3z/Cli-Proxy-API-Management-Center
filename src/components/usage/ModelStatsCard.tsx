@@ -15,7 +15,6 @@ export type ModelStat = ModelStatsSummary;
 export interface ModelStatsCardProps {
   modelStats: ModelStat[];
   loading: boolean;
-  hasPrices: boolean;
 }
 
 type SortKey =
@@ -32,7 +31,7 @@ interface ModelStatWithRate extends ModelStat {
   successRate: number;
 }
 
-export function ModelStatsCard({ modelStats, loading, hasPrices }: ModelStatsCardProps) {
+export function ModelStatsCard({ modelStats, loading }: ModelStatsCardProps) {
   const { t } = useTranslation();
   const [sortKey, setSortKey] = useState<SortKey>('requests');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -150,18 +149,16 @@ export function ModelStatsCard({ modelStats, loading, hasPrices }: ModelStatsCar
                         {arrow('successRate')}
                       </button>
                     </th>
-                    {hasPrices && (
-                      <th className={styles.sortableHeader} aria-sort={ariaSort('cost')}>
-                        <button
-                          type="button"
-                          className={styles.sortHeaderButton}
-                          onClick={() => handleSort('cost')}
-                        >
-                          {t('usage_stats.total_cost')}
-                          {arrow('cost')}
-                        </button>
-                      </th>
-                    )}
+                    <th className={styles.sortableHeader} aria-sort={ariaSort('cost')}>
+                      <button
+                        type="button"
+                        className={styles.sortHeaderButton}
+                        onClick={() => handleSort('cost')}
+                      >
+                        {t('usage_stats.total_cost')}
+                        {arrow('cost')}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -203,7 +200,7 @@ export function ModelStatsCard({ modelStats, loading, hasPrices }: ModelStatsCar
                           {stat.successRate.toFixed(1)}%
                         </span>
                       </td>
-                      {hasPrices && <td>{stat.cost > 0 ? formatUsd(stat.cost) : '--'}</td>}
+                      <td>{stat.cost > 0 ? formatUsd(stat.cost) : '--'}</td>
                     </tr>
                   ))}
                 </tbody>

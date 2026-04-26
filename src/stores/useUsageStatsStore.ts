@@ -9,6 +9,7 @@ export const USAGE_STATS_STALE_TIME_MS = 240_000;
 export type LoadUsageStatsOptions = {
   force?: boolean;
   staleTimeMs?: number;
+  windowHours?: number;
 };
 
 type UsageStatsSnapshot = Record<string, unknown>;
@@ -49,8 +50,9 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
   loadUsageStats: async (options = {}) => {
     const force = options.force === true;
     const staleTimeMs = options.staleTimeMs ?? USAGE_STATS_STALE_TIME_MS;
+    const windowHours = options.windowHours;
     const { apiBase = '', managementKey = '' } = useAuthStore.getState();
-    const scopeKey = `${apiBase}::${managementKey}`;
+    const scopeKey = `${apiBase}::${managementKey}::${windowHours ?? ''}`;
     const state = get();
     const scopeChanged = state.scopeKey !== scopeKey;
 
@@ -91,7 +93,7 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
 
     const requestPromise = (async () => {
       try {
-        const usageResponse = await usageApi.getUsage();
+        const usageResponse = await usageApi.getUsage(windowHours ? { window: windowHours } : undefined);
         const rawUsage = usageResponse?.usage ?? usageResponse;
         const usage =
           rawUsage && typeof rawUsage === 'object' ? (rawUsage as UsageStatsSnapshot) : null;

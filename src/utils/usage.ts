@@ -67,6 +67,7 @@ export interface UsageDetail {
     total_tokens: number;
   };
   failed: boolean;
+  cost?: number;
   __modelName?: string;
   __timestampMs?: number;
 }
@@ -103,14 +104,16 @@ export interface ModelStatsSummary {
   latencySampleCount: number;
 }
 
-export type UsageTimeRange = '7h' | '24h' | '7d' | 'all';
+export type UsageTimeRange = '1h' | '3h' | '12h' | '1d' | '7d';
 
 const TOKENS_PER_PRICE_UNIT = 1_000_000;
 const MODEL_PRICE_STORAGE_KEY = 'cli-proxy-model-prices-v2';
 const USAGE_ENDPOINT_METHOD_REGEX = /^(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s+(\S+)/i;
-const USAGE_TIME_RANGE_MS: Record<Exclude<UsageTimeRange, 'all'>, number> = {
-  '7h': 7 * 60 * 60 * 1000,
-  '24h': 24 * 60 * 60 * 1000,
+const USAGE_TIME_RANGE_MS: Record<UsageTimeRange, number> = {
+  '1h': 1 * 60 * 60 * 1000,
+  '3h': 3 * 60 * 60 * 1000,
+  '12h': 12 * 60 * 60 * 1000,
+  '1d': 24 * 60 * 60 * 1000,
   '7d': 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -149,10 +152,6 @@ export function filterUsageByTimeRange<T>(
   range: UsageTimeRange,
   nowMs: number = Date.now()
 ): T {
-  if (range === 'all') {
-    return usageData;
-  }
-
   const usageRecord = isRecord(usageData) ? usageData : null;
   const apis = getApisRecord(usageData);
   if (!usageRecord || !apis) {
@@ -560,6 +559,7 @@ export function collectUsageDetails(usageData: unknown): UsageDetail[] {
           latency_ms: latencyMs ?? undefined,
           tokens: tokensRaw as unknown as UsageDetail['tokens'],
           failed: detailRaw.failed === true,
+          cost: typeof detailRaw.cost === 'number' ? detailRaw.cost : undefined,
           __modelName: modelName,
           __timestampMs: Number.isNaN(timestampMs) ? 0 : timestampMs,
         });
@@ -637,6 +637,7 @@ export function collectUsageDetailsWithEndpoint(usageData: unknown): UsageDetail
           latency_ms: latencyMs ?? undefined,
           tokens: tokensRaw as unknown as UsageDetail['tokens'],
           failed: detailRaw.failed === true,
+          cost: typeof detailRaw.cost === 'number' ? detailRaw.cost : undefined,
           __modelName: modelName,
           __endpoint: endpoint,
           __endpointMethod: endpointMethod,
@@ -776,6 +777,9 @@ export function calculateCost(
   detail: UsageDetail,
   modelPrices: Record<string, ModelPrice>
 ): number {
+  if (typeof detail.cost === 'number' && detail.cost !== 0) {
+    return detail.cost;
+  }
   const modelName = detail.__modelName || '';
   const price = modelPrices[modelName];
   if (!price) {
@@ -813,7 +817,7 @@ export function calculateTotalCost(
   modelPrices: Record<string, ModelPrice>
 ): number {
   const details = collectUsageDetails(usageData);
-  if (!details.length || !Object.keys(modelPrices).length) {
+  if (!details.length) {
     return 0;
   }
   return details.reduce((sum, detail) => sum + calculateCost(detail, modelPrices), 0);
@@ -933,7 +937,7 @@ export function getApiStats(
             }
           }
 
-          if (price && detailRecord) {
+          if (detailRecord) {
             totalCost += calculateCost(
               { ...(detailRecord as unknown as UsageDetail), __modelName: modelName },
               modelPrices
@@ -1018,8 +1022,6 @@ export function getModelStats(
 
       const details = Array.isArray(modelData.details) ? modelData.details : [];
 
-      const price = modelPrices[modelName];
-
       const hasExplicitCounts =
         typeof modelData.success_count === 'number' || typeof modelData.failure_count === 'number';
       if (hasExplicitCounts) {
@@ -1041,7 +1043,7 @@ export function getModelStats(
 
           addLatencySample(existing.latency, latencyMs);
 
-          if (price && detailRecord) {
+          if (detailRecord) {
             existing.cost += calculateCost(
               { ...(detailRecord as unknown as UsageDetail), __modelName: modelName },
               modelPrices

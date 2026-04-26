@@ -47,10 +47,9 @@ export function CostTrendChart({
 }: CostTrendChartProps) {
   const { t } = useTranslation();
   const [period, setPeriod] = useState<'hour' | 'day'>('hour');
-  const hasPrices = Object.keys(modelPrices).length > 0;
 
   const { chartData, chartOptions, hasData } = useMemo(() => {
-    if (!hasPrices || !usage) {
+    if (!usage) {
       return { chartData: { labels: [], datasets: [] }, chartOptions: {}, hasData: false };
     }
 
@@ -91,7 +90,7 @@ export function CostTrendChart({
     };
 
     return { chartData: data, chartOptions: options, hasData: series.hasData };
-  }, [usage, period, isDark, isMobile, modelPrices, hasPrices, hourWindowHours, t]);
+  }, [usage, period, isDark, isMobile, modelPrices, hourWindowHours, t]);
 
   return (
     <Card
@@ -117,8 +116,6 @@ export function CostTrendChart({
     >
       {loading ? (
         <div className={styles.hint}>{t('common.loading')}</div>
-      ) : !hasPrices ? (
-        <div className={styles.hint}>{t('usage_stats.cost_need_price')}</div>
       ) : !hasData ? (
         <div className={styles.hint}>{t('usage_stats.cost_no_data')}</div>
       ) : (
