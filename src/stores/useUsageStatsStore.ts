@@ -16,6 +16,7 @@ type UsageStatsSnapshot = Record<string, unknown>;
 
 type UsageStatsState = {
   usage: UsageStatsSnapshot | null;
+  limits: unknown[];
   keyStats: KeyStats;
   usageDetails: UsageDetail[];
   loading: boolean;
@@ -41,6 +42,7 @@ const getErrorMessage = (error: unknown) =>
 
 export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
   usage: null,
+  limits: [],
   keyStats: createEmptyKeyStats(),
   usageDetails: [],
   loading: false,
@@ -85,6 +87,7 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
     if (connectionChanged) {
       set({
         usage: null,
+        limits: [],
         keyStats: createEmptyKeyStats(),
         usageDetails: [],
         error: null,
@@ -106,9 +109,13 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
 
         if (requestId !== usageRequestToken) return;
 
+        const rawLimits = usageResponse?.limits;
+        const limits = Array.isArray(rawLimits) ? rawLimits : [];
+
         const usageDetails = collectUsageDetails(usage);
         set({
           usage,
+          limits,
           keyStats: computeKeyStatsFromDetails(usageDetails),
           usageDetails,
           loading: false,
@@ -141,6 +148,7 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
     inFlightUsageRequest = null;
     set({
       usage: null,
+      limits: [],
       keyStats: createEmptyKeyStats(),
       usageDetails: [],
       loading: false,

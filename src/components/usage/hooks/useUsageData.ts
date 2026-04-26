@@ -16,6 +16,7 @@ export interface UsagePayload {
 
 export interface UseUsageDataReturn {
   usage: UsagePayload | null;
+  limits: unknown[];
   loading: boolean;
   error: string;
   lastRefreshedAt: Date | null;
@@ -34,6 +35,7 @@ export function useUsageData(windowHours?: number): UseUsageDataReturn {
   const { t } = useTranslation();
   const { showNotification } = useNotificationStore();
   const usageSnapshot = useUsageStatsStore((state) => state.usage);
+  const limitsSnapshot = useUsageStatsStore((state) => state.limits);
   const loading = useUsageStatsStore((state) => state.loading);
   const storeError = useUsageStatsStore((state) => state.error);
   const lastRefreshedAtTs = useUsageStatsStore((state) => state.lastRefreshedAt);
@@ -140,6 +142,7 @@ export function useUsageData(windowHours?: number): UseUsageDataReturn {
 
   return {
     usage,
+    limits: limitsSnapshot,
     loading,
     error,
     lastRefreshedAt,

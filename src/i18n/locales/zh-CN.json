@@ -1048,7 +1048,15 @@
     "request_log_download": "下载",
     "input_tokens": "输入 Tokens",
     "output_tokens": "输出 Tokens",
-    "last_updated": "更新于"
+    "last_updated": "更新于",
+    "limiter_title": "限制器",
+    "limiter_all_models": "全部模型",
+    "limiter_input_tokens": "输入 Tokens",
+    "limiter_output_tokens": "输出 Tokens",
+    "limiter_cache_tokens": "缓存 Tokens",
+    "limiter_price": "价格",
+    "limiter_window": "窗口",
+    "limiter_no_limits": "未配置限制"
   },
   "stats": {
     "success": "成功",

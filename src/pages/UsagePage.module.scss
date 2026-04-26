@@ -1502,3 +1502,101 @@
     height: 8px;
   }
 }
+
+// Limiter Section
+.limiterSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.limiterItem {
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.limiterHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.limiterSource {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.limiterAuthIndex {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  color: var(--text-tertiary);
+}
+
+.limiterTag {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: $radius-full;
+  border: 1px solid var(--border-color);
+}
+
+.limiterBars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.limiterBarRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.limiterBarLabel {
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.limiterBar {
+  flex: 1;
+  height: 6px;
+  background-color: var(--bg-tertiary);
+  border-radius: 999px;
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.limiterBarFill {
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
+.limiterBarFillLow {
+  background-color: var(--success-color, #22c55e);
+}
+
+.limiterBarFillMedium {
+  background-color: var(--quota-medium-color, #e0aa14);
+}
+
+.limiterBarFillHigh {
+  background-color: var(--danger-color);
+}
+
+.limiterBarValues {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}

@@ -1048,7 +1048,15 @@
     "request_log_download": "Download",
     "input_tokens": "Input Tokens",
     "output_tokens": "Output Tokens",
-    "last_updated": "Updated"
+    "last_updated": "Updated",
+    "limiter_title": "Limiter",
+    "limiter_all_models": "All models",
+    "limiter_input_tokens": "Input Tokens",
+    "limiter_output_tokens": "Output Tokens",
+    "limiter_cache_tokens": "Cache Tokens",
+    "limiter_price": "Price",
+    "limiter_window": "Window",
+    "limiter_no_limits": "No limits configured"
   },
   "stats": {
     "success": "Success",

@@ -31,6 +31,7 @@ import {
   TokenBreakdownChart,
   CostTrendChart,
   ServiceHealthCard,
+  LimiterCard,
   useUsageData,
   useSparklines,
   useChartData
@@ -140,6 +141,7 @@ export function UsagePage() {
   // Data hook — pass windowHours so the API fetches server-side filtered data
   const {
     usage,
+    limits,
     loading,
     error,
     lastRefreshedAt,
@@ -393,6 +395,16 @@ export function UsagePage() {
         <ApiDetailsCard apiStats={apiStats} loading={loading} />
         <ModelStatsCard modelStats={modelStats} loading={loading} />
       </div>
+
+      <LimiterCard
+        limits={limits}
+        loading={loading}
+        geminiKeys={config?.geminiApiKeys || []}
+        claudeConfigs={config?.claudeApiKeys || []}
+        codexConfigs={config?.codexApiKeys || []}
+        vertexConfigs={config?.vertexApiKeys || []}
+        openaiProviders={openaiProvidersForUsage}
+      />
 
       <RequestEventsDetailsCard
         usage={usage}
