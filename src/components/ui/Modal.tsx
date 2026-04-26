@@ -9,13 +9,27 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { IconX } from './icons';
+import { IconDownload, IconX } from './icons';
+
+const ICON_MAP = {
+  download: IconDownload,
+} as const;
+
+export type ModalHeaderActionIcon = keyof typeof ICON_MAP;
+
+export interface ModalHeaderAction {
+  icon: ModalHeaderActionIcon;
+  onClick: () => void;
+  label?: string;
+  disabled?: boolean;
+}
 
 interface ModalProps {
   open: boolean;
   title?: ReactNode;
   onClose: () => void;
   footer?: ReactNode;
+  headerActions?: ModalHeaderAction[];
   width?: number | string;
   className?: string;
   closeDisabled?: boolean;
@@ -121,6 +135,7 @@ export function Modal({
   title,
   onClose,
   footer,
+  headerActions,
   width = 520,
   className,
   closeDisabled = false,
@@ -283,6 +298,25 @@ export function Modal({
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
       >
+        {headerActions && headerActions.length > 0 && (
+          <div className="modal-header-actions">
+            {headerActions.map((action, index) => {
+              const IconComponent = ICON_MAP[action.icon];
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  className="modal-header-action-btn"
+                  onClick={action.onClick}
+                  aria-label={action.label}
+                  disabled={action.disabled}
+                >
+                  <IconComponent size={20} />
+                </button>
+              );
+            })}
+          </div>
+        )}
         <button
           ref={closeButtonRef}
           type="button"

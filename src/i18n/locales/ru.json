@@ -1042,6 +1042,7 @@
     "request_events_count": "{{count}} событий",
     "request_events_limit_hint": "Показано {{shown}} из {{total}} событий для стабильной производительности.",
     "request_log_modal_title": "Лог запроса: {{id}}",
+    "request_log_download": "Скачать",
     "input_tokens": "Входные токены",
     "output_tokens": "Выходные токены",
     "last_updated": "Обновлено"

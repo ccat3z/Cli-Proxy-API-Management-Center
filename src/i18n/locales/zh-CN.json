@@ -1045,6 +1045,7 @@
     "request_events_count": "{{count}} 条事件",
     "request_events_limit_hint": "为保证渲染性能，仅展示 {{shown}} / {{total}} 条事件。",
     "request_log_modal_title": "请求日志: {{id}}",
+    "request_log_download": "下载",
     "input_tokens": "输入 Tokens",
     "output_tokens": "输出 Tokens",
     "last_updated": "更新于"

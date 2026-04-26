@@ -335,6 +335,14 @@ export function RequestEventsDetailsCard({
     }
   };
 
+  const handleDownloadLog = () => {
+    if (!logModal.content) return;
+    downloadBlob({
+      filename: `request-log-${logModal.requestId}.txt`,
+      blob: new Blob([logModal.content], { type: 'text/plain;charset=utf-8' }),
+    });
+  };
+
   const handleCloseLogModal = () => {
     setLogModal((prev) => ({ ...prev, open: false }));
   };
@@ -607,6 +615,17 @@ export function RequestEventsDetailsCard({
         title={t('usage_stats.request_log_modal_title', { id: logModal.requestId })}
         onClose={handleCloseLogModal}
         width={720}
+        headerActions={
+          !logModal.loading && !logModal.error && logModal.content
+            ? [
+                {
+                  icon: 'download' as const,
+                  onClick: handleDownloadLog,
+                  label: t('usage_stats.request_log_download'),
+                },
+              ]
+            : undefined
+        }
       >
         {logModal.loading ? (
           <div className={styles.logModalLoading}>{t('common.loading')}</div>

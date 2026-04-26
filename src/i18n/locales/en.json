@@ -1045,6 +1045,7 @@
     "request_events_count": "{{count}} events",
     "request_events_limit_hint": "Showing {{shown}} of {{total}} events to keep rendering responsive.",
     "request_log_modal_title": "Request Log: {{id}}",
+    "request_log_download": "Download",
     "input_tokens": "Input Tokens",
     "output_tokens": "Output Tokens",
     "last_updated": "Updated"
