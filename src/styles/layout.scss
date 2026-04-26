@@ -11,7 +11,14 @@
 }
 
 .app-shell {
-  --sidebar-active-width: var(--sidebar-panel-width);
+  --sidebar-active-width: 0px;
+
+  .sidebar,
+  .sidebar-backdrop,
+  .sidebar-toggle-floating,
+  .mobile-menu-btn {
+    display: none !important;
+  }
 
   position: relative;
   display: flex;
@@ -346,7 +353,7 @@
   position: relative;
   display: flex;
   flex: 1;
-  gap: var(--sidebar-gap);
+  gap: 0;
   min-height: 0;
   height: 100vh;
   padding: var(--shell-gutter);

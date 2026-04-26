@@ -393,7 +393,8 @@ export function MainLayout() {
       : []),
     { path: '/system', label: t('nav.system_info'), icon: sidebarIcons.system },
   ];
-  const navOrder = navItems.map((item) => item.path);
+  const visibleNavItems = navItems.filter((item) => item.path === '/usage');
+  const navOrder = visibleNavItems.map((item) => item.path);
   const getRouteOrder = (pathname: string) => {
     const trimmedPath =
       pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
@@ -643,7 +644,7 @@ export function MainLayout() {
           </div>
 
           <div className="nav-section">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
