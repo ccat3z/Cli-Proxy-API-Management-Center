@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { usageApi } from '@/services/api';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { collectUsageDetails, computeKeyStatsFromDetails, type KeyStats, type UsageDetail } from '@/utils/usage';
+import type { LimitEntry } from '@/types';
 import i18n from '@/i18n';
 
 export const USAGE_STATS_STALE_TIME_MS = 240_000;
@@ -16,7 +17,7 @@ type UsageStatsSnapshot = Record<string, unknown>;
 
 type UsageStatsState = {
   usage: UsageStatsSnapshot | null;
-  limits: unknown[];
+  limits: LimitEntry[];
   keyStats: KeyStats;
   usageDetails: UsageDetail[];
   loading: boolean;
@@ -110,7 +111,7 @@ export const useUsageStatsStore = create<UsageStatsState>((set, get) => ({
         if (requestId !== usageRequestToken) return;
 
         const rawLimits = usageResponse?.limits;
-        const limits = Array.isArray(rawLimits) ? rawLimits : [];
+        const limits: LimitEntry[] = Array.isArray(rawLimits) ? rawLimits : [];
 
         const usageDetails = collectUsageDetails(usage);
         set({

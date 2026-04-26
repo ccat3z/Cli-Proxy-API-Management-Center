@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
-import type { GeminiKeyConfig, ProviderKeyConfig, OpenAIProviderConfig } from '@/types';
+import type { GeminiKeyConfig, ProviderKeyConfig, OpenAIProviderConfig, LimitEntry } from '@/types';
 import type { CredentialInfo } from '@/types/sourceInfo';
 import { buildSourceInfoMap, resolveSourceDisplay } from '@/utils/sourceResolver';
 import { formatUsd, normalizeAuthIndex, normalizeUsageSourceId } from '@/utils/usage';
@@ -24,13 +24,6 @@ function formatWindow(seconds: number): string {
   return `${seconds}s`;
 }
 
-type LimitEntry = {
-  source?: string;
-  auth_index?: string;
-  config?: Record<string, unknown>;
-  current?: Record<string, unknown>;
-};
-
 const LIMIT_METRICS = [
   { key: 'input_tokens', labelKey: 'usage_stats.limiter_input_tokens', format: 'tokens' },
   { key: 'output_tokens', labelKey: 'usage_stats.limiter_output_tokens', format: 'tokens' },
@@ -39,7 +32,7 @@ const LIMIT_METRICS = [
 ] as const;
 
 export interface LimiterCardProps {
-  limits: unknown[];
+  limits: LimitEntry[];
   loading: boolean;
   geminiKeys: GeminiKeyConfig[];
   claudeConfigs: ProviderKeyConfig[];
@@ -120,7 +113,7 @@ export function LimiterCard({
     <Card title={t('usage_stats.limiter_title')}>
       <div className={styles.limiterSection}>
         {limits.map((limit, idx) => {
-          const entry = limit as LimitEntry;
+          const entry = limit;
           const sourceRaw = normalizeUsageSourceId(entry.source);
           const authIndexRaw = entry.auth_index;
           const sourceInfo = resolveSourceDisplay(sourceRaw, authIndexRaw, sourceInfoMap, authFileMap);
@@ -143,7 +136,7 @@ export function LimiterCard({
                 <span className={styles.limiterTag}>
                   {isAllModels
                     ? t('usage_stats.limiter_all_models')
-                    : (models as string[]).join(', ')}
+                    : models!.join(', ')}
                 </span>
                 {windowSec > 0 && (
                   <span className={styles.limiterTag}>

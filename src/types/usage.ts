@@ -44,6 +44,28 @@ export interface UsageStats {
   modelStats: ModelUsage[];
 }
 
+// 限制器指标配置与当前值
+export interface LimitMetrics {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_tokens?: number;
+  price?: number;
+}
+
+// 限制器配置
+export interface LimitConfig extends LimitMetrics {
+  window?: number;
+  models?: string[];
+}
+
+// 限制器条目
+export interface LimitEntry {
+  source?: string;
+  auth_index?: string;
+  config?: LimitConfig;
+  current?: LimitMetrics;
+}
+
 // 模型价格
 export interface ModelPrice {
   modelName: string;

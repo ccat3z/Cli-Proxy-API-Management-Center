@@ -4,6 +4,7 @@ import { USAGE_STATS_STALE_TIME_MS, useNotificationStore, useUsageStatsStore } f
 import { usageApi } from '@/services/api/usage';
 import { downloadBlob } from '@/utils/download';
 import { loadModelPrices, saveModelPrices, type ModelPrice } from '@/utils/usage';
+import type { LimitEntry } from '@/types';
 
 export interface UsagePayload {
   total_requests?: number;
@@ -16,7 +17,7 @@ export interface UsagePayload {
 
 export interface UseUsageDataReturn {
   usage: UsagePayload | null;
-  limits: unknown[];
+  limits: LimitEntry[];
   loading: boolean;
   error: string;
   lastRefreshedAt: Date | null;
