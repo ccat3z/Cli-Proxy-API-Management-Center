@@ -1062,8 +1062,16 @@
 }
 
 .logSectionTitle {
-  flex: 1;
   letter-spacing: 0.03em;
+}
+
+.logSectionEventBadge {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  padding: 1px 6px;
+  border-radius: $radius-full;
+  margin-left: 8px;
 }
 
 .logSectionLineCount {

@@ -24,6 +24,11 @@ import {
   type ModelPrice,
 } from '@/utils/usage';
 import { downloadBlob } from '@/utils/download';
+import {
+  isSSEResponseSection,
+  extractSSEBody,
+  reconstructSSEResponse,
+} from '@/utils/sseReconstructor';
 import styles from '@/pages/UsagePage.module.scss';
 
 const ALL_FILTER = '__all__';
@@ -689,6 +694,8 @@ export function RequestEventsDetailsCard({
   );
 }
 
+type SectionViewMode = 'assembled' | 'pretty' | 'raw';
+
 function LogSectionView({
   section,
   collapsed,
@@ -698,9 +705,42 @@ function LogSectionView({
   collapsed: boolean;
   onToggle: () => void;
 }) {
-  const [formatted, setFormatted] = useState(true);
+  const isSSE = useMemo(
+    () => isSSEResponseSection(section.title, section.body),
+    [section.title, section.body],
+  );
+  const [mode, setMode] = useState<SectionViewMode>(isSSE ? 'assembled' : 'pretty');
+
+  // Reset mode when section changes
+  useEffect(() => {
+    setMode(isSSE ? 'assembled' : 'pretty');
+  }, [isSSE]);
+
   const bodyLines = section.body.split('\n').filter((l) => l !== '');
   const bodyBytes = new Blob([section.body]).size;
+
+  const sseResult = useMemo(() => {
+    if (!isSSE) return null;
+    const { beforeSSE, sseText } = extractSSEBody(section.body);
+    const reconstruction = reconstructSSEResponse(sseText);
+    const beforeLines = beforeSSE.split('\n').filter((l) => l !== '');
+    return { reconstruction, beforeLines };
+  }, [isSSE, section.body]);
+
+  const cycleMode = useCallback(() => {
+    setMode((m) => {
+      if (isSSE) {
+        if (m === 'assembled') return 'raw';
+        return 'assembled';
+      }
+      if (m === 'pretty') return 'raw';
+      return 'pretty';
+    });
+  }, [isSSE]);
+
+  const modeLabel = isSSE
+    ? mode === 'assembled' ? 'assembled' : 'raw'
+    : mode === 'pretty' ? 'pretty' : 'raw';
 
   return (
     <div className={styles.logSection}>
@@ -710,20 +750,34 @@ function LogSectionView({
             ▶
           </span>
           <span className={styles.logSectionTitle}>{section.title}</span>
+          {isSSE && !collapsed && sseResult && (
+            <span className={styles.logSectionEventBadge}>
+              {sseResult.reconstruction.eventCount} events
+            </span>
+          )}
         </button>
         {!collapsed && (
           <span
             className={styles.logSectionFormatToggle}
-            onClick={() => setFormatted((f) => !f)}
+            onClick={cycleMode}
           >
-            {formatted ? 'pretty' : 'raw'}
+            {modeLabel}
           </span>
         )}
         <span className={styles.logSectionLineCount}>{bodyBytes >= 1024 ? `${(bodyBytes / 1024).toFixed(1)} KB` : `${bodyBytes} B`}</span>
       </div>
       {!collapsed && (
         <div className={styles.logSectionBody}>
-          {formatted ? (
+          {isSSE && mode === 'assembled' && sseResult ? (
+            <>
+              {sseResult.beforeLines.map((line, i) => (
+                <FormattedLine key={`pre-${i}`} line={line} />
+              ))}
+              {sseResult.reconstruction.assembled != null && (
+                <YamlBlock value={sseResult.reconstruction.assembled} />
+              )}
+            </>
+          ) : mode === 'pretty' ? (
             bodyLines.map((line, i) => (
               <FormattedLine key={i} line={line} />
             ))
@@ -797,7 +851,7 @@ function LogLine({ line }: { line: string }) {
   if (line.startsWith('Headers:') || line.startsWith('Body:')) {
     return <div className={styles.logLineSubHeader}>{line}</div>;
   }
-  if (/^[A-Z][A-Za-z ]+:/.test(line)) {
+  if (/^[A-Z][A-Za-z \-]+:/.test(line)) {
     const colonIdx = line.indexOf(':');
     return (
       <div className={styles.logLine}>
